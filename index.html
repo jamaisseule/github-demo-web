@@ -1,7 +1,58 @@
 <<<<<<< HEAD
 <h1>Hello</h1>
 =======
-<p>hjbhbh</p>
->>>>>>> 402e22466fe88bcdfc41e7f79502b8b42cedc1e0
+ public function index(ProductRepository $productRepository, Request $request, int $pageId = 1): Response
+    {
+        $selectedCategory = $request->query->get('category');
+        $Name = $request->query->get('name');
+        $minPrice = $request->query->get('minPrice');
+        $maxPrice = $request->query->get('maxPrice');
 
-<p>hjbjjjh</p>
+        $sortBy = $request->query->get('sort');
+        $orderBy = $request->query->get('order');
+
+        $expressionBuilder = Criteria::expr();
+        $criteria = new Criteria();
+        if (empty($minPrice)) {
+            $minPrice = 0;
+        }
+        $criteria->where($expressionBuilder->gte('Price', $minPrice));
+        if (!is_null($maxPrice) && !empty(($maxPrice))) {
+            $criteria->andWhere($expressionBuilder->lte('Price', $maxPrice));
+        }
+        if (!is_null($selectedCategory)) {
+            $criteria->andWhere($expressionBuilder->eq('Category', $selectedCategory));
+        }
+        if (!is_null($Name) && !empty(($Name))) {
+            $criteria->andWhere($expressionBuilder->contains('Name', $Name)); //search
+        }
+        if (!empty($sortBy)) {
+            $criteria->orderBy([$sortBy => ($orderBy == 'asc') ? Criteria::ASC : Criteria::DESC]);
+        }
+
+        $filteredList = $productRepository->matching($criteria);
+
+        $numOfItems = $filteredList->count();   // total number of items satisfied above query
+        $itemsPerPage = 8; // number of items shown each page
+        $filteredList = $filteredList->slice($itemsPerPage * ($pageId - 1), $itemsPerPage);
+        return $this->renderForm('product/index.html.twig', [
+            'products' => $filteredList,
+            'selectedCat' => $selectedCategory ?: 'Drink',
+            'numOfPages' => ceil($numOfItems / $itemsPerPage)
+        ]);
+//
+
+
+        $this->denyAccessUnlessGranted('ROLE_USER');
+        $hasAccess = $this->isGranted('ROLE_USER');
+        if ($hasAccess) {
+            return $this->render('product/index.html.twig', [
+                'products' => $productRepository->findAll(),
+            ]);
+        } else {
+            return $this->render('product/index.html.twig', [
+                'products' => [],
+            ]);
+        }
+
+    }
